@@ -12,18 +12,22 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interf
 contract FundMe{
 
     mapping (address => uint256) public funderToAmount;
-    address owner; // 设置合约的拥有者
-    AggregatorV3Interface dataFeed;//定义价格接收器
-    uint256 constant TARGET = 10 * 10 ** 18;
-    uint256 constant MIMIMUM_VALUE = 3 * 10 ** 18; // 定义最小资金池
+    address public owner; // 设置合约的拥有者
+    AggregatorV3Interface public dataFeed;//定义价格接收器
+    uint256 constant TARGET = 3 * 10 ** 18;
+    uint256 constant MIMIMUM_VALUE = 1 * 10 ** 18; // 定义最小资金池
     uint256 deploymentTimestamp;
     uint256 lockTime;
     address erc20Addr;
     bool public getFundSuccess = false;
 
-    constructor(uint256 _lockTime) { // 构造函数，参数为地址
+    event FundWithDrawByOwner(uint256);
+    event ReFundByFunder(address, uint256);
+
+    constructor(uint256 _lockTime, address dataFeedAddr) { // 构造函数，参数为地址
         // selolia testnet
-        dataFeed = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
+        // ether sepolia dataFeed address 0x694AA1769357215DE4FAC081bf1f309aDC325306
+        dataFeed = AggregatorV3Interface(dataFeedAddr);
         owner = msg.sender; // 设置合约的拥有者
         deploymentTimestamp = block.timestamp;
         lockTime = _lockTime;
@@ -33,7 +37,7 @@ contract FundMe{
     function fund() public payable {
         require(convertEthToUsd(msg.value) >= MIMIMUM_VALUE, "send more ETH");// 保证资金池不低于最小资金池
         require(block.timestamp < lockTime + deploymentTimestamp, "window is closed");
-        funderToAmount[msg.sender] += msg.value;    
+        funderToAmount[msg.sender] += msg.value;
     }
 
     /**
@@ -71,20 +75,25 @@ contract FundMe{
 
         // call
         bool success;
-        (success, ) = payable(msg.sender).call{value: address(this).balance}("");
+        uint256 balance = address(this).balance;
+        (success, ) = payable(msg.sender).call{value: balance}("");
         require(success, "Transmission failed");
         funderToAmount[msg.sender] = 0;
         getFundSuccess = true;
+        // emit event
+        emit FundWithDrawByOwner(balance);
     }
 
-    function refund() external windowClosed {
+    function reFund() public windowClosed {
         require(convertEthToUsd(address(this).balance) < TARGET, "target is reached");
         require(address(this).balance > 0, "No Ether to refund"); // 检查是否有资金池
         require(funderToAmount[msg.sender] > 0, "No Ether to refund");
         bool success;
-        (success, ) = payable(msg.sender).call{value: funderToAmount[msg.sender]}("");
+        uint256 refundAmount = funderToAmount[msg.sender];
+        (success, ) = payable(msg.sender).call{value: refundAmount}("");
         require(success, "Transmission failed");
         funderToAmount[msg.sender] = 0;//清零
+        emit ReFundByFunder(msg.sender, refundAmount);
     }
 
     function setFunderToAmount(address funder, uint256 amountToUpdate) public {
