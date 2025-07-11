@@ -16,20 +16,20 @@ developmentChains.includes(network.name)
     })
 
     // test fund and getfund successfully
-    // it("fund and getfund successfully", 
-    //     async function() {
-    //         // make sure target reached
-    //         await fundMe.fund({value: ethers.parseEther("0.11")})
-    //         // make sure window closed
-    //         await new Promise(resolve => setTimeout(resolve, 181 * 1000))
-    //         // make sure we can get receipt
-    //         const getFundTx = await fundMe.getFund()
-    //         const getFundReceipt = await getFundTx.wait();
-    //         expect(getFundReceipt)
-    //             .to.emit(fundMe, "FundWithDrawByOwner")
-    //             .withArgs(ethers.parseEther("0.11"))
-    //     }
-    // )
+    it("fund and getfund successfully", 
+        async function() {
+            // make sure target reached
+            await fundMe.fund({value: ethers.parseEther("0.11")})
+            // make sure window closed
+            await new Promise(resolve => setTimeout(resolve, 181 * 1000))
+            // make sure we can get receipt
+            const getFundTx = await fundMe.getFund()
+            const getFundReceipt = await getFundTx.wait();
+            expect(getFundReceipt)
+                .to.emit(fundMe, "FundWithDrawByOwner")
+                .withArgs(ethers.parseEther("0.11"))
+        }
+    )
 
     // test fund and refund successfully
     it("fund and refund successfully", 
